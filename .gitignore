@@ -1,0 +1,16 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+client/dist-ssr/
+server/db/*.db
+server/db/*.db-shm
+server/db/*.db-wal
+server/.env
+.env
+.env.local
+.env.*.local
+client/.vite/
+.vscode/
+.DS_Store
+Thumbs.db
