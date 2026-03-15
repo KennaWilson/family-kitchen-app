@@ -20,7 +20,22 @@ export default function StickyNoteGrid() {
 
   useEffect(() => {
     if (!pid) return;
-    api.get(`/profiles/${pid}/tasks`).then((r) => setTasks(r.data)).catch(console.error);
+
+    const fetchTasks = () => {
+      api
+        .get(`/profiles/${pid}/tasks`)
+        .then((r) => setTasks(r.data))
+        .catch(console.error);
+    };
+
+    fetchTasks();
+
+    const handler = () => fetchTasks();
+    window.addEventListener('domus:tasks-updated', handler);
+
+    return () => {
+      window.removeEventListener('domus:tasks-updated', handler);
+    };
   }, [pid]);
 
   async function addTask() {

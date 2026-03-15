@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS groceries (
   name       TEXT    NOT NULL,
   quantity   TEXT    NOT NULL DEFAULT '1',
   unit       TEXT    DEFAULT '',
+  category   TEXT    DEFAULT '',
   checked    INTEGER NOT NULL DEFAULT 0,
   created_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -49,7 +50,20 @@ CREATE TABLE IF NOT EXISTS meal_plan (
   recipe_title TEXT   NOT NULL,
   recipe_image TEXT   DEFAULT '',
   recipe_id   TEXT   DEFAULT '',
+  recipe_url  TEXT   DEFAULT '',
+  notes       TEXT   DEFAULT '',
+  favorite    INTEGER NOT NULL DEFAULT 0,
+  dinner_cook_id INTEGER DEFAULT NULL REFERENCES profiles(id) ON DELETE SET NULL,
   created_at  TEXT   NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Unschedule dinner ideas (brainstorm list)
+CREATE TABLE IF NOT EXISTS dinner_ideas (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  profile_id  INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  title       TEXT    NOT NULL,
+  notes       TEXT    DEFAULT '',
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
 -- Calendar events

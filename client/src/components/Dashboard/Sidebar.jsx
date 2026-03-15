@@ -1,12 +1,14 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, ShoppingCart, Calendar, User, LogOut } from 'lucide-react';
+import { Home, ShoppingCart, Calendar, User, LogOut, UtensilsCrossed } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Star } from 'lucide-react';
+import logoMark from '../../assets/domus-logo-mark.png';
 
 const navItems = [
-  { icon: Home,         label: 'Home',     path: '/dashboard' },
-  { icon: ShoppingCart, label: 'Grocery',  path: '/grocery' },
-  { icon: Calendar,     label: 'Calendar', path: '/calendar' },
+  { icon: Home,           label: 'Home',     path: '/dashboard' },
+  { icon: ShoppingCart,   label: 'Grocery',  path: '/grocery' },
+  { icon: UtensilsCrossed,label: 'Dinner',   path: '/dinner' },
+  { icon: Calendar,       label: 'Calendar', path: '/calendar' },
 ];
 
 export default function Sidebar() {
@@ -19,10 +21,10 @@ export default function Sidebar() {
     : '?';
 
   return (
-    <aside className="w-20 min-h-screen bg-white shadow-card flex flex-col items-center py-8 gap-2">
-      {/* Logo */}
-      <div className="w-11 h-11 bg-purple-ash rounded-2xl flex items-center justify-center mb-6">
-        <span className="text-white text-lg">🏠</span>
+    <aside className="w-20 min-h-screen bg-french-blue shadow-card flex flex-col items-center py-8 gap-2">
+      {/* Logo mark */}
+      <div className="w-11 h-11 rounded-2xl overflow-hidden flex items-center justify-center mb-6 bg-transparent">
+        <img src={logoMark} alt="Domus logo" className="w-full h-full object-contain" />
       </div>
 
       {/* Nav links */}

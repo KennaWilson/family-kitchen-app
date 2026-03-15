@@ -5,11 +5,14 @@ import api from '../api';
 import { useApp } from '../context/AppContext';
 import ProfileCard from '../components/Welcome/ProfileCard';
 import CreateProfileModal from '../components/Welcome/CreateProfileModal';
+import logoMark from '../assets/domus-logo-mark.png';
+import logoWordmark from '../assets/domus-wordmark.png';
 
 export default function WelcomePage() {
   const [profiles, setProfiles] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [greeting, setGreeting] = useState(null); // { name }
+  const [deletingId, setDeletingId] = useState(null);
   const { login } = useApp();
   const navigate = useNavigate();
 
@@ -27,6 +30,21 @@ export default function WelcomePage() {
     setProfiles((prev) => [...prev, profile]);
     setShowCreate(false);
     handleSelect(profile);
+  }
+
+  async function handleDelete(profile) {
+    if (!window.confirm(`Delete ${profile.name}'s profile and all their data? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(profile.id);
+    try {
+      await api.delete(`/profiles/${profile.id}`);
+      setProfiles((prev) => prev.filter((p) => p.id !== profile.id));
+    } catch (err) {
+      console.error(err);
+      setDeletingId(null);
+      alert('Sorry, there was a problem deleting this profile.');
+    }
   }
 
   if (greeting) {
@@ -74,11 +92,15 @@ export default function WelcomePage() {
 
       {/* Header */}
       <div className="text-center mb-12">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-purple-ash rounded-2xl flex items-center justify-center shadow-md">
-            <span className="text-white text-xl">🏠</span>
+        <div className="flex flex-col items-center justify-center gap-2 mb-3">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center shadow-md bg-transparent">
+            <img src={logoMark} alt="Domus logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-800">Home Assistant</h1>
+          <img
+            src={logoWordmark}
+            alt="DOMUS"
+            className="h-8 object-contain"
+          />
         </div>
         <p className="text-gray-400 text-lg">Who's home?</p>
       </div>
@@ -86,7 +108,13 @@ export default function WelcomePage() {
       {/* Profile cards */}
       <div className="flex flex-wrap gap-6 justify-center mb-10">
         {profiles.map((p) => (
-          <ProfileCard key={p.id} profile={p} onSelect={handleSelect} />
+          <ProfileCard
+            key={p.id}
+            profile={p}
+            onSelect={handleSelect}
+            onDelete={handleDelete}
+            deleting={deletingId === p.id}
+          />
         ))}
 
         {/* Add new profile */}

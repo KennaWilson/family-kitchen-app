@@ -7,12 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        'french-blue': '#7B8FA1',
-        'light-taupe': '#B5A99A',
-        'dusty-rose': '#C9919C',
-        'purple-ash': '#9B8BB4',
-        'cream': '#F7F5F3',
-        'cream-dark': '#EDE9E5',
+        // Updated Domus palette
+        'purple-ash': '#153243',   // deep accent / headings
+        'cream': '#ECE8EF',        // main background
+        'cream-dark': '#ece8ef',   // subtle panels
+        'dusty-rose': '#AA767C',   // primary accent (buttons, cards)
+        'french-blue': '#E3EBFF',  // soft secondary accent
+        'light-taupe': '#E3EBFF',  // reuse for consistency
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],

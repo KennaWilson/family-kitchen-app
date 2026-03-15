@@ -24,13 +24,29 @@ function StarBurst({ active }) {
 
 export default function ChoreList() {
   const { activeProfile, updateStars } = useApp();
-  const pid = activeProfile?.id;
+  const [profiles, setProfiles] = useState([]);
+  const [assigneeId, setAssigneeId] = useState(null);
+
+  const pid = assigneeId || activeProfile?.id;
 
   const [chores, setChores] = useState([]);
   const [input, setInput] = useState('');
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState('');
   const [burstId, setBurstId] = useState(null);
+
+  useEffect(() => {
+    // Load all profiles for assignee picker
+    api
+      .get('/profiles')
+      .then((r) => {
+        setProfiles(r.data);
+        if (!assigneeId && activeProfile?.id) {
+          setAssigneeId(activeProfile.id);
+        }
+      })
+      .catch(console.error);
+  }, [activeProfile?.id, assigneeId]);
 
   useEffect(() => {
     if (!pid) return;
@@ -50,7 +66,9 @@ export default function ChoreList() {
       completed: !chore.completed,
     });
     setChores((prev) => prev.map((c) => c.id === chore.id ? data.chore : c));
-    updateStars(data.stars);
+    if (pid === activeProfile?.id) {
+      updateStars(data.stars);
+    }
 
     if (!chore.completed) {
       // Show starburst
@@ -75,17 +93,65 @@ export default function ChoreList() {
 
   const active = chores.filter((c) => !c.completed);
   const done   = chores.filter((c) => c.completed);
+  const totalCount = chores.length;
+  const completedCount = done.length;
+
+  const currentAssignee = profiles.find((p) => p.id === pid) || activeProfile;
 
   return (
-    <div className="bg-white rounded-3xl shadow-card p-6 h-full flex flex-col">
+    <div className="bg-cream-dark rounded-3xl shadow-card p-6 h-full flex flex-col" style={{ backgroundColor: '#EDE9E5' }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-semibold text-gray-700">Chores</h2>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-700">
+            Chores {completedCount}/{totalCount || 0}
+          </h2>
+          {currentAssignee && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              Assigned to {currentAssignee.name}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full">
           <Star size={14} className="text-amber-400 fill-amber-400" />
           <span className="text-xs font-bold text-amber-500">{activeProfile?.stars ?? 0}</span>
         </div>
       </div>
+
+      {/* Assignee selector */}
+      {profiles.length > 0 && (
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1 no-scrollbar">
+          {profiles.map((p) => {
+            const initials = p.name
+              .split(' ')
+              .map((w) => w[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            const selected = pid === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setAssigneeId(p.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs ${
+                  selected
+                    ? 'border-purple-ash bg-purple-ash/10 text-purple-ash'
+                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-cream'
+                }`}
+              >
+                <span
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                  style={{ backgroundColor: p.avatar_color || '#9B8BB4' }}
+                >
+                  {initials}
+                </span>
+                <span>{p.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add input */}
       <div className="flex gap-2 mb-5">
@@ -106,7 +172,7 @@ export default function ChoreList() {
       </div>
 
       {/* Active chores */}
-      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar">
         {active.map((chore) => (
           <div key={chore.id} className="relative flex items-center gap-3 p-3 rounded-xl hover:bg-cream group transition-colors">
             <StarBurst active={burstId === chore.id} />

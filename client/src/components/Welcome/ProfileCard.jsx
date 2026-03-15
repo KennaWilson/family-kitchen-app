@@ -1,6 +1,6 @@
-import { Star } from 'lucide-react';
+import { Star, Trash2 } from 'lucide-react';
 
-export default function ProfileCard({ profile, onSelect }) {
+export default function ProfileCard({ profile, onSelect, onDelete, deleting }) {
   const initials = profile.name
     .split(' ')
     .map((w) => w[0])
@@ -9,9 +9,11 @@ export default function ProfileCard({ profile, onSelect }) {
     .slice(0, 2);
 
   return (
-    <button
-      onClick={() => onSelect(profile)}
-      className="group flex flex-col items-center gap-4 p-8 rounded-3xl bg-white shadow-card hover:shadow-soft hover:-translate-y-1 transition-all duration-200 w-52 cursor-pointer"
+    <div
+      className={`group flex flex-col items-center gap-4 p-8 rounded-3xl bg-white shadow-card hover:shadow-soft hover:-translate-y-1 transition-all duration-200 w-52 cursor-pointer relative ${
+        deleting ? 'opacity-40 pointer-events-none' : ''
+      }`}
+      onClick={() => !deleting && onSelect(profile)}
     >
       {/* Avatar */}
       <div
@@ -36,6 +38,20 @@ export default function ProfileCard({ profile, onSelect }) {
       <span className="text-xs text-purple-ash font-medium opacity-0 group-hover:opacity-100 transition-opacity">
         Tap to enter →
       </span>
-    </button>
+
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(profile);
+          }}
+          className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/80 text-gray-300 hover:text-dusty-rose hover:bg-white shadow-sm flex items-center justify-center transition-colors"
+          title="Delete profile"
+        >
+          <Trash2 size={13} />
+        </button>
+      )}
+    </div>
   );
 }

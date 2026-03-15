@@ -11,11 +11,66 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #F7F5F3;
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #ECE8EF;
+  font-family: "Playfair Display", serif;
   -webkit-font-smoothing: antialiased;
+}
+
+body, input, textarea, button, select {
+  font-family: "Playfair Display", serif;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Optional utility if you ever mix fonts later */
+.playfair-display {
+  font-family: "Playfair Display", serif;
+}
+
+/* Glow styles for AI response bar */
+.glow-bar {
+  box-shadow:
+    0 0 0 1px rgba(170, 118, 124, 0.35),
+    0 0 20px rgba(170, 118, 124, 0.45);
+  transition: box-shadow 180ms ease-out, transform 180ms ease-out;
+}
+
+.glow-bar-active {
+  box-shadow:
+    0 0 0 1px rgba(170, 118, 124, 0.6),
+    0 0 28px rgba(170, 118, 124, 0.75);
+  transform: translateY(-1px);
+}
+
+@keyframes aiGlowPulse {
+  0% {
+    box-shadow:
+      0 0 0 1px rgba(170, 118, 124, 0.6),
+      0 0 26px rgba(170, 118, 124, 0.9);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(170, 118, 124, 0.9),
+      0 0 38px rgba(170, 118, 124, 1);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(170, 118, 124, 0.6),
+      0 0 26px rgba(170, 118, 124, 0.9);
+  }
+}
+
+.glow-bar-loading {
+  animation: aiGlowPulse 0.9s ease-in-out infinite;
+}
+
+/* Hide scrollbars but keep scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
 }

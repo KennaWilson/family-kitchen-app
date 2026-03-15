@@ -3,6 +3,7 @@ import { AppProvider, useApp } from "./context/AppContext";
 import WelcomePage from "./pages/WelcomePage";
 import DashboardPage from "./pages/DashboardPage";
 import GroceryPage from "./pages/GroceryPage";
+import DinnerPage from "./pages/DinnerPage";
 import CalendarPage from "./pages/CalendarPage";
 
 function PrivateRoute({ children }) {
@@ -16,6 +17,7 @@ function AppRoutes() {
       <Route path="/" element={<WelcomePage />} />
       <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
       <Route path="/grocery" element={<PrivateRoute><GroceryPage /></PrivateRoute>} />
+      <Route path="/dinner" element={<PrivateRoute><DinnerPage /></PrivateRoute>} />
       <Route path="/calendar" element={<PrivateRoute><CalendarPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
