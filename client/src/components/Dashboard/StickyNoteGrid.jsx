@@ -1,15 +1,40 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Pencil, Check } from 'lucide-react';
-import api from '../../api';
 import { useApp } from '../../context/AppContext';
 
 const STICKY_COLORS = ['#C9919C', '#9B8BB4', '#7B8FA1', '#B5A99A', '#D4A5A5', '#A8C5B5'];
+const STORAGE_KEY = 'domus_demo_tasks';
 
 export default function StickyNoteGrid() {
   const { activeProfile } = useApp();
   const pid = activeProfile?.id;
 
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore parse errors and fall back to starter data
+    }
+    const starter = [
+      {
+        id: Date.now(),
+        title: 'Walk the dog',
+        note: 'Before dinner',
+        color: STICKY_COLORS[0],
+        completed: false,
+      },
+      {
+        id: Date.now() + 1,
+        title: 'Start laundry',
+        note: '',
+        color: STICKY_COLORS[1],
+        completed: false,
+      },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(starter));
+    return starter;
+  });
   const [showAdd, setShowAdd] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newNote, setNewNote] = useState('');
@@ -18,55 +43,68 @@ export default function StickyNoteGrid() {
   const [editTitle, setEditTitle] = useState('');
   const [editNote, setEditNote] = useState('');
 
+  // Keep tasks in sync if other components (like QuickNoteBar) update localStorage
   useEffect(() => {
-    if (!pid) return;
-
-    const fetchTasks = () => {
-      api
-        .get(`/profiles/${pid}/tasks`)
-        .then((r) => setTasks(r.data))
-        .catch(console.error);
+    const handler = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) setTasks(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
     };
-
-    fetchTasks();
-
-    const handler = () => fetchTasks();
     window.addEventListener('domus:tasks-updated', handler);
-
+    window.addEventListener('storage', handler);
     return () => {
       window.removeEventListener('domus:tasks-updated', handler);
+      window.removeEventListener('storage', handler);
     };
-  }, [pid]);
+  }, []);
 
-  async function addTask() {
+  function persistTasks(updater) {
+    setTasks((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore quota / access errors
+      }
+      return next;
+    });
+    window.dispatchEvent(new Event('domus:tasks-updated'));
+  }
+
+  function addTask() {
     if (!newTitle.trim()) return;
-    const { data } = await api.post(`/profiles/${pid}/tasks`, {
+    const task = {
+      id: Date.now(),
       title: newTitle.trim(),
       note: newNote.trim(),
       color: newColor,
-    });
-    setTasks((prev) => [data, ...prev]);
+      completed: false,
+    };
+    persistTasks((prev) => [task, ...prev]);
     setNewTitle(''); setNewNote(''); setNewColor(STICKY_COLORS[0]); setShowAdd(false);
   }
 
-  async function toggleComplete(task) {
-    const { data } = await api.put(`/profiles/${pid}/tasks/${task.id}`, {
-      ...task,
-      completed: !task.completed,
-    });
-    setTasks((prev) => prev.map((t) => t.id === task.id ? data : t));
+  function toggleComplete(task) {
+    persistTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id ? { ...t, completed: !t.completed } : t,
+      ),
+    );
   }
 
-  async function deleteTask(id) {
-    await api.delete(`/profiles/${pid}/tasks/${id}`);
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+  function deleteTask(id) {
+    persistTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
-  async function saveEdit(task) {
-    const { data } = await api.put(`/profiles/${pid}/tasks/${task.id}`, {
-      ...task, title: editTitle, note: editNote,
-    });
-    setTasks((prev) => prev.map((t) => t.id === task.id ? data : t));
+  function saveEdit(task) {
+    persistTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id ? { ...t, title: editTitle, note: editNote } : t,
+      ),
+    );
     setEditId(null);
   }
 

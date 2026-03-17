@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Trash2, Pencil, Check, X, ChevronRight } from 'lucide-react';
-import api from '../../api';
 import { useApp } from '../../context/AppContext';
 
 const CATEGORIES = [
@@ -26,60 +25,81 @@ export default function GroceryList() {
   const { activeProfile } = useApp();
   const pid = activeProfile?.id;
 
-  const [items, setItems] = useState([]);
+  const STORAGE_KEY = 'domus_demo_groceries';
+
+  const [items, setItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore parse errors
+    }
+    const starter = [
+      {
+        id: Date.now(),
+        name: 'Apples',
+        quantity: '4',
+        unit: '',
+        category: 'fruits',
+        checked: false,
+      },
+    ];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(starter));
+    return starter;
+  });
   const [inputText, setInputText] = useState('');
   const [activeCategory, setActiveCategory] = useState(null); // filter + hint for new items
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
 
-  useEffect(() => {
-    if (!pid) return;
+  function persistItems(updater) {
+    setItems((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
-    const fetchItems = () => {
-      api
-        .get(`/profiles/${pid}/groceries`)
-        .then((r) => setItems(r.data))
-        .catch(console.error);
-    };
-
-    fetchItems();
-
-    const handler = () => fetchItems();
-    window.addEventListener('domus:groceries-updated', handler);
-
-    return () => {
-      window.removeEventListener('domus:groceries-updated', handler);
-    };
-  }, [pid]);
-
-  async function addItemFromInput(e) {
+  function addItemFromInput(e) {
     e.preventDefault();
     if (!inputText.trim()) return;
     const name = inputText.trim();
     const category = activeCategory || inferCategory(name);
 
-    const { data } = await api.post(`/profiles/${pid}/groceries`, {
+    const item = {
+      id: Date.now(),
       name,
       quantity: '1',
+      unit: '',
       category,
-    });
-    setItems((prev) => [data, ...prev]);
+      checked: false,
+    };
+    persistItems((prev) => [item, ...prev]);
     setInputText('');
   }
 
-  async function toggleCheck(item) {
-    const { data } = await api.put(`/profiles/${pid}/groceries/${item.id}`, { ...item, checked: !item.checked });
-    setItems((prev) => prev.map((i) => i.id === item.id ? data : i));
+  function toggleCheck(item) {
+    persistItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, checked: !i.checked } : i,
+      ),
+    );
   }
 
-  async function deleteItem(id) {
-    await api.delete(`/profiles/${pid}/groceries/${id}`);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  function deleteItem(id) {
+    persistItems((prev) => prev.filter((i) => i.id !== id));
   }
 
-  async function saveEdit(item) {
-    const { data } = await api.put(`/profiles/${pid}/groceries/${item.id}`, { ...item, ...editData });
-    setItems((prev) => prev.map((i) => i.id === item.id ? data : i));
+  function saveEdit(item) {
+    persistItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, ...editData } : i,
+      ),
+    );
     setEditId(null);
   }
 

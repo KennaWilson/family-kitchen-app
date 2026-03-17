@@ -1,22 +1,41 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, StickyNote, ShoppingCart } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { ChevronRight, StickyNote } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import Sidebar from '../components/Dashboard/Sidebar';
 import StickyNoteGrid from '../components/Dashboard/StickyNoteGrid';
 import ChoreList from '../components/Chores/ChoreList';
 import GroceryList from '../components/Grocery/GroceryList';
-import api from '../api';
 import logoWordmark from '../assets/domus-wordmark.png';
 
 export default function DashboardPage() {
   const { activeProfile } = useApp();
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem('domus_demo_profiles');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    const starter = [
+      { id: 1, name: 'Chloe', avatar_color: '#9B8BB4', stars: 6 },
+      { id: 2, name: 'Cole',  avatar_color: '#7B8FA1', stars: 4 },
+    ];
+    localStorage.setItem('domus_demo_profiles', JSON.stringify(starter));
+    return starter;
+  });
 
   useEffect(() => {
-    // Fetch all profiles once for the leaderboard
-    api.get('/profiles').then((r) => setProfiles(r.data)).catch(console.error);
+    const handler = () => {
+      try {
+        const saved = localStorage.getItem('domus_demo_profiles');
+        if (saved) setProfiles(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
   }, []);
 
   return (
@@ -24,54 +43,57 @@ export default function DashboardPage() {
       <Sidebar />
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col gap-6 p-8 overflow-y-auto">
-        <div className="flex gap-6 flex-1">
-          {/* Left / center area */}
-          <div className="flex-1 flex flex-col gap-6 min-w-0">
-            {/* Welcome header */}
-            <div className="flex items-baseline gap-6">
-              <img
-                src={logoWordmark}
-                alt="DOMUS"
-                className="h-8 object-contain"
-              />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800">
-                  Welcome Home {activeProfile?.name}
-                </h1>
-                <p className="text-gray-400 mt-1 text-sm">
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-            </div>
-
-            {/* "Write a response" bar – quick sticky note creator for now */}
-            <QuickNoteBar />
-
-            {/* Main grid: sticky notes + grocery + weekly menu */}
-            <div className="grid grid-cols-1 xl:grid-cols-[2fr_1.6fr] gap-6 flex-1 min-h-0">
-              {/* Sticky notes area */}
-              <div className="min-h-0">
-                <StickyNoteGrid />
-              </div>
-
-              {/* Grocery + Weekly menus column */}
-              <div className="flex flex-col gap-6 min-h-0">
-                <div className="flex-1 min-h-0">
-                  <GroceryList />
+      <main className="flex-1 flex flex-col gap-6 p-8 overflow-auto">
+        {/* Main row: sticky notes + grocery + weekly menu + chores */}
+        <div className="overflow-x-auto">
+          <div className="flex gap-6 flex-1 min-w-[1200px]">
+            {/* Left / center area */}
+            <div className="flex-1 flex flex-col gap-6 min-w-0">
+              {/* Welcome header */}
+              <div className="flex items-baseline gap-6">
+                <img
+                  src={logoWordmark}
+                  alt="DOMUS"
+                  className="h-8 object-contain"
+                />
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-800">
+                    Welcome Home {activeProfile?.name}
+                  </h1>
+                  <p className="text-gray-400 mt-1 text-sm">
+                    {new Date().toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
                 </div>
-                <TodayMenuCard />
+              </div>
+
+              {/* "Write a response" bar – quick sticky note creator for now */}
+              <QuickNoteBar />
+
+              {/* Main grid: sticky notes + grocery + weekly menu */}
+              <div className="grid grid-cols-1 xl:grid-cols-[2fr_1.6fr] gap-6 flex-1 min-h-0">
+                {/* Sticky notes area */}
+                <div className="min-h-0">
+                  <StickyNoteGrid />
+                </div>
+
+                {/* Grocery + Weekly menus column */}
+                <div className="flex flex-col gap-6 min-h-0">
+                  <div className="flex-1 min-h-0">
+                    <GroceryList />
+                  </div>
+                  <TodayMenuCard />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Right panel — Chores */}
-          <div className="w-80 xl:w-96 flex-shrink-0">
-            <ChoreList />
+            {/* Right panel — Chores */}
+            <div className="w-80 xl:w-96 flex-shrink-0">
+              <ChoreList />
+            </div>
           </div>
         </div>
 
@@ -87,78 +109,33 @@ function QuickNoteBar() {
   const pid = activeProfile?.id;
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     if (!pid || !text.trim()) return;
-    setError('');
     setSaving(true);
     try {
       const raw = text.trim();
-
-      // 1) Handle dinner ideas: "add ... to dinner ideas"
-      const ideaMatch = raw.match(/add (.+) to dinner ideas?/i);
-      if (ideaMatch) {
-        const ideaTitle = ideaMatch[1].trim();
-        if (ideaTitle) {
-          await api.post(`/profiles/${pid}/dinner-ideas`, {
-            title: ideaTitle,
-          });
-          window.dispatchEvent(new Event('domus:dinner-ideas-updated'));
-        }
-      }
-
-      // 2) Handle simple "for tomorrow" dinner plan
-      if (/for tomorrow/i.test(raw)) {
-        const tomorrow = addDays(new Date(), 1);
-        const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
-        const title = raw.replace(/for tomorrow.*/i, '').trim() || raw;
-        await api.post(`/profiles/${pid}/groceries/meal-plan`, {
-          day_date: tomorrowStr,
-          recipe_title: title,
-          recipe_image: '',
-          recipe_id: '',
-          recipe_url: '',
-          notes: '',
-        });
-        window.dispatchEvent(new Event('domus:meals-updated'));
-      }
-
-      // Ask AI what to do with this text (sticky note vs grocery item)
-      let interpretation;
+      const STORAGE_KEY = 'domus_demo_tasks';
+      let current = [];
       try {
-        const { data } = await api.post('/ai/interpret', {
-          text: raw,
-        });
-        interpretation = data;
-      } catch (aiErr) {
-        console.error('AI interpret failed, falling back to sticky note', aiErr);
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) current = JSON.parse(saved);
+      } catch {
+        // ignore
       }
-
-      if (interpretation?.action === 'grocery_item') {
-        const payload = interpretation.payload || {};
-        await api.post(`/profiles/${pid}/groceries`, {
-          name: payload.name || raw,
-          quantity: payload.quantity || '1',
-          unit: payload.unit || '',
-        });
-        window.dispatchEvent(new Event('domus:groceries-updated'));
-      } else {
-        // Default / fallback: sticky note task
-        const payload = interpretation?.payload || {};
-        await api.post(`/profiles/${pid}/tasks`, {
-          title: payload.title || raw,
-          note: payload.note || '',
-        });
-        window.dispatchEvent(new Event('domus:tasks-updated'));
-      }
-
+      const task = {
+        id: Date.now(),
+        title: raw,
+        note: '',
+        color: '#C9919C',
+        completed: false,
+      };
+      const next = [task, ...current];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event('domus:tasks-updated'));
       setText('');
-    } catch (err) {
-      console.error(err);
-      setError('Sorry, something went wrong. Saved this as a sticky note.');
     } finally {
       setSaving(false);
     }
@@ -190,54 +167,12 @@ function QuickNoteBar() {
           <span>Create note</span>
         </button>
       </form>
-      {error && (
-        <p className="mt-1 text-xs text-dusty-rose">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
 
 function TodayMenuCard() {
-  const { activeProfile } = useApp();
-  const pid = activeProfile?.id;
   const navigate = useNavigate();
-  const [todayMeal, setTodayMeal] = useState(null);
-
-  useEffect(() => {
-    if (!pid) return;
-
-    let mounted = true;
-
-    const fetchTodayMeal = () => {
-      api
-        .get(`/profiles/${pid}/groceries/meal-plan`)
-        .then((r) => {
-          if (!mounted) return;
-          const todayStr = format(new Date(), 'yyyy-MM-dd');
-          const todays = r.data.filter((m) => m.day_date === todayStr);
-
-          if (todays.length === 0) {
-            setTodayMeal(null);
-            return;
-          }
-
-          // Prefer a favorite dinner for tonight when available
-          const favorite = todays.find((m) => m.favorite);
-          setTodayMeal(favorite || todays[0]);
-        })
-        .catch(console.error);
-    };
-
-    fetchTodayMeal();
-    const intervalId = setInterval(fetchTodayMeal, 30000); // refresh every 30s
-
-    return () => {
-      mounted = false;
-      clearInterval(intervalId);
-    };
-  }, [pid]);
 
   return (
     <div className="bg-cream-dark rounded-3xl shadow-card p-5 flex flex-col" style={{ backgroundColor: '#EDE9E5' }}>
@@ -253,31 +188,9 @@ function TodayMenuCard() {
         </button>
       </div>
 
-      {todayMeal ? (
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden bg-dusty-rose/10 flex items-center justify-center">
-            {todayMeal.recipe_image ? (
-              <img
-                src={todayMeal.recipe_image}
-                alt={todayMeal.recipe_title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <ShoppingCart size={18} className="text-dusty-rose" />
-            )}
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Tonight&apos;s menu</p>
-            <p className="text-sm font-semibold text-gray-800">
-              {todayMeal.recipe_title}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-gray-300">
-          No dinner planned for today. Add one on the Dinner page.
-        </p>
-      )}
+      <p className="text-sm text-gray-300">
+        No dinner planned for today. Add one on the Dinner page.
+      </p>
     </div>
   );
 }

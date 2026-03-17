@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Pencil, Check, Star } from 'lucide-react';
-import api from '../../api';
 import { useApp } from '../../context/AppContext';
 
 function StarBurst({ active }) {
@@ -24,50 +23,86 @@ function StarBurst({ active }) {
 
 export default function ChoreList() {
   const { activeProfile, updateStars } = useApp();
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem('domus_demo_profiles');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    const starter = [
+      { id: 1, name: 'Chloe', avatar_color: '#9B8BB4', stars: 6 },
+      { id: 2, name: 'Cole',  avatar_color: '#7B8FA1', stars: 4 },
+    ];
+    localStorage.setItem('domus_demo_profiles', JSON.stringify(starter));
+    return starter;
+  });
   const [assigneeId, setAssigneeId] = useState(null);
 
   const pid = assigneeId || activeProfile?.id;
 
-  const [chores, setChores] = useState([]);
+  const [chores, setChores] = useState(() => {
+    try {
+      const saved = localStorage.getItem('domus_demo_chores');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    const starter = [
+      { id: Date.now(), title: 'Clean bathroom', completed: false },
+      { id: Date.now() + 1, title: 'Do laundry', completed: false },
+    ];
+    localStorage.setItem('domus_demo_chores', JSON.stringify(starter));
+    return starter;
+  });
   const [input, setInput] = useState('');
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState('');
   const [burstId, setBurstId] = useState(null);
 
   useEffect(() => {
-    // Load all profiles for assignee picker
-    api
-      .get('/profiles')
-      .then((r) => {
-        setProfiles(r.data);
-        if (!assigneeId && activeProfile?.id) {
-          setAssigneeId(activeProfile.id);
-        }
-      })
-      .catch(console.error);
+    if (!assigneeId && activeProfile?.id) {
+      setAssigneeId(activeProfile.id);
+    }
   }, [activeProfile?.id, assigneeId]);
 
-  useEffect(() => {
-    if (!pid) return;
-    api.get(`/profiles/${pid}/chores`).then((r) => setChores(r.data)).catch(console.error);
-  }, [pid]);
+  function persistChores(updater) {
+    setChores((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        localStorage.setItem('domus_demo_chores', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   async function addChore() {
     if (!input.trim()) return;
-    const { data } = await api.post(`/profiles/${pid}/chores`, { title: input.trim() });
-    setChores((prev) => [data, ...prev]);
+    const chore = {
+      id: Date.now(),
+      title: input.trim(),
+      completed: false,
+    };
+    persistChores((prev) => [chore, ...prev]);
     setInput('');
   }
 
   async function toggleChore(chore) {
-    const { data } = await api.put(`/profiles/${pid}/chores/${chore.id}`, {
-      title: chore.title,
-      completed: !chore.completed,
-    });
-    setChores((prev) => prev.map((c) => c.id === chore.id ? data.chore : c));
+    // Update completed state locally
+    const nowCompleted = !chore.completed;
+    persistChores((prev) =>
+      prev.map((c) =>
+        c.id === chore.id ? { ...c, completed: nowCompleted } : c,
+      ),
+    );
+
+    // Simple local stars update: +1 when completing, -1 when undoing
     if (pid === activeProfile?.id) {
-      updateStars(data.stars);
+      const delta = nowCompleted ? 1 : -1;
+      const newStars = Math.max(0, (activeProfile?.stars ?? 0) + delta);
+      updateStars(newStars);
     }
 
     if (!chore.completed) {
@@ -78,16 +113,15 @@ export default function ChoreList() {
   }
 
   async function deleteChore(id) {
-    await api.delete(`/profiles/${pid}/chores/${id}`);
-    setChores((prev) => prev.filter((c) => c.id !== id));
+    persistChores((prev) => prev.filter((c) => c.id !== id));
   }
 
   async function saveEdit(chore) {
-    const { data } = await api.put(`/profiles/${pid}/chores/${chore.id}`, {
-      title: editVal,
-      completed: chore.completed,
-    });
-    setChores((prev) => prev.map((c) => c.id === chore.id ? data.chore : c));
+    persistChores((prev) =>
+      prev.map((c) =>
+        c.id === chore.id ? { ...c, title: editVal } : c,
+      ),
+    );
     setEditId(null);
   }
 
